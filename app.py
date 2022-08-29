@@ -17,7 +17,7 @@ migrate = Migrate(app, db)
 class AuthorModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(32), unique=True)
-    quotes = db.relationship('QuoteModel', backref='author', lazy='dynamic')
+    quotes = db.relationship('QuoteModel', backref='author', lazy='dynamic', cascade="all, delete-orphan")
 
     def __init__(self, name):
         self.name = name
@@ -49,19 +49,13 @@ class QuoteModel(db.Model):
 # Resource: Author
 @app.route("/authors")
 def get_authors():
-    quotes = AuthorModel.query.all()
-    quotes_dict = []
-    for quote in quotes:
-        quotes_dict.append(quote.to_dict())
-    return quotes_dict
+    pass
 
 
 @app.route("/authors/<int:author_id>")
 def get_author_by_id(author_id):
-    quote = AuthorModel.query.get(author_id)
-    if quote is None:
-        return {"error": f"Quote with id={author_id} not found"}, 404
-    return quote.to_dict(), 200
+    pass
+
 
 @app.route("/authors", methods=["POST"])
 def create_author():
@@ -70,22 +64,6 @@ def create_author():
     db.session.add(author)
     db.session.commit()
     return author.to_dict(), 201
-
-@app.route("/authors/<int:id>", methods=['PUT'])
-def edit_author(id):
-    quote_data = request.json
-    quote = AuthorModel.query.get(id)
-    if quote is None:
-        return {"error": f"Quote with id={id} not found"}, 404
-        # if quote_data.get("text"):
-        #     quote.text = quote_data['text']
-        # if quote_data.get("author"):
-        #     quote.author = quote_data['author']
-    for key, value in quote_data.items():
-        setattr(quote, key, value)
-    db.session.commit()
-    return quote.to_dict(), 200
-    pass
 
 
 # Resource: Quote
@@ -106,13 +84,16 @@ def get_quote(id):
     return quote.to_dict(), 200
 
 
-@app.route("/quotes", methods=['POST'])
-def create_quote():
-    quote_data = request.json
-    quote = QuoteModel(quote_data["author"], quote_data["text"])
-    db.session.add(quote)
+@app.route("/authors/<int:author_id>/quotes", methods=["POST"])
+def create_quote(author_id):
+    author = AuthorModel.query.get(author_id)
+    if author is None:
+        return {"error": f"Author with id={id} not found"}, 404
+    new_quote = request.json
+    q = QuoteModel(author, new_quote["text"])
+    db.session.add(q)
     db.session.commit()
-    return quote.to_dict()
+    return q.to_dict(), 201
 
 
 @app.route("/quotes/<int:id>", methods=['PUT'])
@@ -121,10 +102,6 @@ def edit_quote(id):
     quote = QuoteModel.query.get(id)
     if quote is None:
         return {"error": f"Quote with id={id} not found"}, 404
-    # if quote_data.get("text"):
-    #     quote.text = quote_data['text']
-    # if quote_data.get("author"):
-    #     quote.author = quote_data['author']
     for key, value in quote_data.items():
         setattr(quote, key, value)
     db.session.commit()
